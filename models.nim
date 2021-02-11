@@ -1,5 +1,6 @@
 ## Game models
 import lists
+import random
 
 
 #--- Place and Direction ------------------------------------------------------
@@ -19,6 +20,12 @@ converter toPlace(direction: Direction): Place =
 
 proc `+`(a, b: Place): Place = (a.x + b.x, a.y + b.y)
 
+proc `mod`(a, b: Place): Place = ((a.x + b.x) mod b.x, (a.y + b.y) mod b.y)
+
+proc `||`(a, b: Direction): bool =
+  (a in [North, South] and b in [North, South] or
+   a in [East, West] and b in [East, West])
+
 
 #--- Grid ---------------------------------------------------------------------
 type Grid* = ref object
@@ -37,7 +44,11 @@ proc newGrid(w, h: int): Grid =
 
 proc `[]`*(grid: Grid; x, y: int): char = grid.grid[y][x]
 
+proc `[]`*(grid: Grid; p: Place): char = grid.grid[p.y][p.x]
+
 proc `[]=`(grid: var Grid; x, y: int; c: char) = grid.grid[y][x] = c
+
+proc `[]=`(grid: var Grid; p: Place; c: char) = grid.grid[p.y][p.x] = c
 
 proc clear(grid: var Grid) =
   for y in 0 ..< grid.h:
@@ -63,28 +74,63 @@ proc initSnake(
   for i in 0 ..< length - 1:
     result.move(direction, grow = true)
 
-proc teleport(snake: var Snake; maxX, maxY: int) =
-  var head = snake.head
-  if head.value.x < 0: head.value.x = maxX - 1
-  if head.value.y < 0: head.value.y = maxY - 1
-  if head.value.x >= maxX: head.value.x = 0
-  if head.value.y >= maxY: head.value.y = 0
+proc teleport(snake: var Snake; borders: Place) =
+  snake.head.value = snake.head.value mod borders
 
 
 #--- Game ---------------------------------------------------------------------
 type Game* = object
   grid*: Grid
   snake: Snake
+  direction: Direction
+  food: Place
+
+proc generateFood(game: var Game)
 
 proc initGame*(w, h: int): Game =
+  randomize()
   result.grid = newGrid(w, h)
   result.snake = initSnake()
+  result.direction = East
+  result.generateFood()
+
+proc borders(game: Game): Place = (game.grid.w, game.grid.h)
+
+proc nextHeadPlace(game: Game): Place =
+  (game.snake.head.value + game.direction) mod game.borders
+
+proc generateFood(game: var Game) =
+  while true:
+    block generation:
+      let (w, h) = game.borders
+      let food = (rand(w - 1), rand(h - 1))
+      if food == game.nextHeadPlace:
+        break generation
+      for node in game.snake.nodes():
+        if food == node.value:
+          break generation
+      game.food = food
+      return
 
 proc tick*(game: var Game; direction: Direction) =
-  game.snake.move(direction, grow = false)
-  game.snake.teleport(game.grid.w, game.grid.h)
+  if not (direction || game.direction):
+    game.direction = direction
+
+  for node in game.snake.nodes():
+    if game.nextHeadPlace == node.value:
+      let (w, h) = game.borders
+      game = initGame(w, h)
+      return
+
+  var grow = false
+  if game.nextHeadPlace == game.food:
+    grow = true
+    game.generateFood()
+
+  game.snake.move(game.direction, grow)
+  game.snake.teleport(game.borders)
 
   game.grid.clear()
+  game.grid[game.food] = '*'
   for node in game.snake.nodes():
-    let (x, y) = node.value
-    game.grid[x, y] = 'O'
+    game.grid[node.value] = 'O'
