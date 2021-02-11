@@ -5,8 +5,10 @@ import lists
 #--- Place and Direction ------------------------------------------------------
 type Place = tuple[x: int, y: int]
 
-type Direction = enum
-  North, East, South, West
+type Command* = enum
+  North, East, South, West, Quit
+
+type Direction* = range[North .. West]
 
 converter toPlace(direction: Direction): Place =
   case direction:
@@ -16,6 +18,7 @@ converter toPlace(direction: Direction): Place =
   of West: (-1, 0)
 
 proc `+`(a, b: Place): Place = (a.x + b.x, a.y + b.y)
+
 
 #--- Grid ---------------------------------------------------------------------
 type Grid* = ref object
@@ -41,6 +44,7 @@ proc clear(grid: var Grid) =
     for x in 0 ..< grid.w:
       grid[x, y] = '.'
 
+
 #--- Snake --------------------------------------------------------------------
 type Snake = DoublyLinkedList[Place]
 
@@ -59,6 +63,14 @@ proc initSnake(
   for i in 0 ..< length - 1:
     result.move(direction, grow = true)
 
+proc teleport(snake: var Snake; maxX, maxY: int) =
+  var head = snake.head
+  if head.value.x < 0: head.value.x = maxX - 1
+  if head.value.y < 0: head.value.y = maxY - 1
+  if head.value.x >= maxX: head.value.x = 0
+  if head.value.y >= maxY: head.value.y = 0
+
+
 #--- Game ---------------------------------------------------------------------
 type Game* = object
   grid*: Grid
@@ -68,8 +80,10 @@ proc initGame*(w, h: int): Game =
   result.grid = newGrid(w, h)
   result.snake = initSnake()
 
-proc tick*(game: var Game) =
-  game.snake.move(South, grow = false)
+proc tick*(game: var Game; direction: Direction) =
+  game.snake.move(direction, grow = false)
+  game.snake.teleport(game.grid.w, game.grid.h)
+
   game.grid.clear()
   for node in game.snake.nodes():
     let (x, y) = node.value

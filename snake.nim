@@ -1,5 +1,7 @@
 import os
+import options
 import models
+
 import view/terminal
 
 
@@ -15,11 +17,18 @@ setControlCHook(onCtrlC)
 
 proc mainLoop() =
   var game = initGame(10, 10)
+  var direction = East
   initView()
+  initController()
 
   while true:
     try:
-      game.tick()
+      let command = getCommand()
+      if command.isSome():
+        case command.get()
+        of North .. West: direction = command.get()
+        of Quit: break
+      game.tick(direction)
       game.grid.display()
       sleep(500)
     except KeyboardInterrupt:
@@ -27,6 +36,7 @@ proc mainLoop() =
       break
 
   finishView()
+  finishController()
 
 
 when isMainModule:
