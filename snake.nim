@@ -2,7 +2,8 @@ import os
 import options
 import models
 
-import view/terminal
+import terminal/view
+import terminal/controller
 
 
 type KeyboardInterrupt = object of Exception
@@ -30,7 +31,7 @@ proc mainLoop() =
         of Quit: break
       game.tick(direction)
       game.grid.display()
-      sleep(500)
+      sleep(250)
     except KeyboardInterrupt:
       echo ""
       break

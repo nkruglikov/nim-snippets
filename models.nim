@@ -42,7 +42,7 @@ proc `[]=`(grid: var Grid; x, y: int; c: char) = grid.grid[y][x] = c
 proc clear(grid: var Grid) =
   for y in 0 ..< grid.h:
     for x in 0 ..< grid.w:
-      grid[x, y] = '.'
+      grid[x, y] = ' '
 
 
 #--- Snake --------------------------------------------------------------------
